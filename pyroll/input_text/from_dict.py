@@ -3,6 +3,7 @@ import importlib
 import pyroll.core as pr
 
 from .config import Config
+from .explicit_functions import is_function, parse_function
 from .resolve import resolve
 
 
@@ -28,5 +29,7 @@ def from_dict(d: dict, namespaces: dict[str, ...]) -> ...:
     for k, v in args.items():
         if isinstance(v, dict):
             args[k] = from_dict(v, namespaces)
+        if is_function(v):
+            args[k] = parse_function(v, namespaces)
 
     return factory(**args)

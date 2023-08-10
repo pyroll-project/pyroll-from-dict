@@ -5,7 +5,8 @@ D_IN_PROFILE = {
     Config.FACTORY_KEY: 'Profile.round',
     'diameter': 0.01,
     'strain': 0,
-    'temperature': 1273.15
+    'temperature': 1273.15,
+    'density': "func: 7.85 / (1 + 3 * 3.5e-3 * (self.temperature - 273.15))"
 }
 
 D_UNIT = {
@@ -25,7 +26,8 @@ D_UNIT = {
 }
 
 D_NAMESPACES = {
-    "pr": "pyroll.core"
+    "pr": "pyroll.core",
+    "np": "numpy"
 }
 
 D1 = {
@@ -46,6 +48,7 @@ def check_in_profile(p: pr.Profile):
     assert p.height == 0.01
     assert p.strain == 0
     assert p.temperature == 1273.15
+    assert p.density < 7.85
 
 
 def check_unit(u: pr.Unit):
