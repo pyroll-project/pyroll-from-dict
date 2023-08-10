@@ -1,9 +1,23 @@
-from typing import Callable
+import importlib
 
 import pyroll.core as pr
 
 from .config import Config
 from .resolve import resolve
+
+
+def input_dict(d: dict) -> tuple[pr.Profile, pr.Unit]:
+    namespaces = {k: importlib.import_module(v) for k, v in d[Config.NAMESPACES_KEY].items()}
+
+    in_profile = from_dict(d[Config.IN_PROFILE_KEY], namespaces)
+
+    d_unit = d[Config.UNIT_KEY]
+    if isinstance(d_unit, list):
+        unit = pr.PassSequence([from_dict(u, namespaces) for u in d_unit])
+    else:
+        unit = from_dict(d_unit, namespaces)
+
+    return in_profile, unit
 
 
 def from_dict(d: dict, namespaces: dict[str, ...]) -> ...:
@@ -16,28 +30,3 @@ def from_dict(d: dict, namespaces: dict[str, ...]) -> ...:
             args[k] = from_dict(v, namespaces)
 
     return factory(**args)
-
-
-def register_hook_function(d: dict[str, ...]) -> pr.HookFunction:
-    try:
-        tryfirst = bool(d["tryfirst"])
-    except KeyError:
-        tryfirst = False
-
-    try:
-        trylast = bool(d["trylast"])
-    except KeyError:
-        trylast = False
-
-    try:
-        wrapper = bool(d["wrapper"])
-    except KeyError:
-        wrapper = False
-
-    hook: pr.Hook = resolve(d["hook"])
-    code = compile(d["code"], "<string>", "eval")
-
-    def func(self, cycle):
-        return eval(code, {}, {"self": self, "cycle": cycle})
-
-    return hook.add_function(func, tryfirst, trylast, wrapper)

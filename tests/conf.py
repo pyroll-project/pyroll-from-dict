@@ -24,6 +24,22 @@ D_UNIT = {
     }
 }
 
+D_NAMESPACES = {
+    "pr": "pyroll.core"
+}
+
+D1 = {
+    Config.NAMESPACES_KEY: D_NAMESPACES,
+    Config.IN_PROFILE_KEY: D_IN_PROFILE,
+    Config.UNIT_KEY: D_UNIT,
+}
+
+D2 = {
+    Config.NAMESPACES_KEY: D_NAMESPACES,
+    Config.IN_PROFILE_KEY: D_IN_PROFILE,
+    Config.UNIT_KEY: [D_UNIT],
+}
+
 
 def check_in_profile(p: pr.Profile):
     assert "round" in p.classifiers
