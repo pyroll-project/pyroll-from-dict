@@ -1,5 +1,5 @@
 import pyroll.core as pr
-from pyroll.input_text import Config
+from pyroll.from_dict import Config
 
 D_IN_PROFILE = {
     Config.FACTORY_KEY: 'Profile.round',

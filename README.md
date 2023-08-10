@@ -1,40 +1,96 @@
-# PyRoll Plugin
+# PyRoll From Dict Extension
 
-Template for PyRoll Plugin Repositories.
+This extension is meant to create PyRolL objects from plain `dict` structures.
 
-Please follow the following instructions when creating your own PyRoll plugins:
+## Import PyRolL Objects
 
-- The folder `pyroll` is a namespace package, place your plugin package therein to make it discoverable by the CLI for example by just renaming the nested `plugin` package to the desired).
+For example to create a `RollPass` instance with the related `Roll` and `Groove` objects use the following:
 
-- Use [`pytest`](https://docs.pytest.org) for creating unit tests. Place all test files in the `tests` folder.
+```python
+from pyroll.from_dict import from_dict
 
-- Update the `pyproject.toml` with your metadata. It is recommended to use [`hatch`](https://hatch.pypa.io) to maintain dependencies, as is preconfigured. It is recommended that the plugin major version corresponds to the PyRoll Core major version (so plugin versions 2.x.x working with `pyroll-core` 2.x.x).
+roll_pass = from_dict({
+    '__ctor__': 'RollPass',
+    'gap': 0.001,
+    'roll': {
+        '__ctor__': 'Roll',
+        'nominal_radius': 0.1,
+        'rotational_frequency': 1,
+        'groove': {
+            '__ctor__': 'CircularOvalGroove',
+            'r1': 0.002,
+            'r2': 0.02,
+            'depth': 0.002
+        }
+    }
+}, {})
+```
 
-- Place documentation in the `docs` folder:
-    - you may provide a printable documentation using LaTeX based on the `docs.tex` template and the
-      provided `PyRollDocs` class
-    - you may provide a web documentation using Markdown or RST rendered by GitHub or external tools
-      like [Sphinx](https://www.sphinx-doc.org)
-    - you may provide a printable documentation built from Markdown or RST by tools such
-      as [Pandoc](https://pandoc.org/)
-    - if appropriate, include the result PDF in the commit and link it from `README.md` like [so](docs/docs.pdf)
-    - include model and usage information in the documentation
+The class resp. factory function can be given with the `__ctor__` key.
+By default, class and object names therein are resolved in the `pyroll.core` namespace.
+The key can be changed with the `pyroll.from_dict.Config.FACTORY_KEY` config parameter.
+The second argument to `from_dict` is a dict of namespaces to use additionally for resolving constructor names.
+The key must be than used as prefix to the object name in dot notation like in the following example (although you may
+resolve `RollPass` without prefix, because it is in the `pyroll.core` namespace).
 
-- Please use a permissive license such as BSD or MIT
+```python
+from pyroll.from_dict import from_dict
 
-- Edit this readme file with contents of your own needs.
-    
-- If you want your plugin to be listed on the main documentation website (see [here](https://pyroll.readthedocs.io/en/latest/plugins/index.html)), please contact the maintainers preferably using an issue or PR.
+roll_pass = from_dict({
+    '__ctor__': 'pr.RollPass',
+    ...
+}, {"pr": "pyroll.core"})
+```
 
-## Usage of the Preconfigured Hatch Scripts
+## Import Whole Input Sets
 
-To build the docs use (needs a working LaTeX installation)
+The second main function of this package is `dict_input`.
+It reads from a larger dict structure containing an incoming profile, a pass sequence and namespace definitions.
+It returns a tuple of in profile and pass sequence.
 
-    hatch run docs:build
+```python
+from pyroll.from_dict import dict_input
 
-To run the tests use
+in_profile, sequence = dict_input({
+    'namespaces': {'pr': 'pyroll.core', 'np': 'numpy'},
+    'in_profile': {
+        '__ctor__': 'Profile.round',
+        'diameter': 0.01,
+        'strain': 0,
+        'temperature': 1273.15,
+        'density': 'func: 7.85 / (1 + 3 * 3.5e-3 * (self.temperature - 273.15))'
+    },
+    'unit': [
+        {
+            '__ctor__': 'RollPass',
+            'gap': 0.001,
+            'roll': {
+                '__ctor__': 'Roll',
+                'nominal_radius': 0.1,
+                'rotational_frequency': 1,
+                'groove': {
+                    '__ctor__': 'CircularOvalGroove',
+                    'r1': 0.002,
+                    'r2': 0.02,
+                    'depth': 0.002
+                }
+            }
+        }
+    ]
+})
+```
 
-    hatch run test:all
+The namespaces are used in resolving all specified objects.
+The keys for namespaces, in profile and unit/sequence can be configured
+with `pyroll.from_dict.Config.NAMESPACES_KEY`, `pyroll.from_dict.Config.IN_PROFILE_KEY`
+and `pyroll.from_dict.Config.UNIT_KEY`.
+The value of the unit can be a single unit definition or a list.
+The list will be automatically converted into an instance of `PassSequence`.
 
-The test environment is preconfigured to test with Python 3.9, 3.10 and 3.11.
-The tests are skipped for the respective version, if it can not be found.
+As you can see in the `density` field of the in profile, you may give explicit hook functions by providing a string of
+the structure `"func: <some expression>` similar to a lambda function.
+Whitespace in this string is ignored.
+The only argument to this function is `self`, the reference to the respective instance.
+The function expression will be compiled and executed using `eval()`.
+You may use all modules defined in the namespaces from within the function (so for example you may use `np` for `numpy`
+here.

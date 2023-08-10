@@ -7,7 +7,7 @@ from .explicit_functions import is_function, parse_function
 from .resolve import resolve
 
 
-def input_dict(d: dict) -> tuple[pr.Profile, pr.Unit]:
+def dict_input(d: dict) -> tuple[pr.Profile, pr.Unit]:
     namespaces = {k: importlib.import_module(v) for k, v in d[Config.NAMESPACES_KEY].items()}
 
     in_profile = from_dict(d[Config.IN_PROFILE_KEY], namespaces)

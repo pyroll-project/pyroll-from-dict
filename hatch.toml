@@ -4,22 +4,15 @@ packages = [
 ]
 
 [version]
-path = "pyroll/input_text/__init__.py"
+path = "pyroll/from_dict/__init__.py"
 
 [envs.default]
 path = ".venv"
 dependencies = [
-    "pytest ~= 7.0"
+    "pytest ~= 7.0",
+    "tomli",
+    "tomli-w"
 ]
-
-[envs.docs]
-path = ""
-dependencies = [
-    "pygments ~= 2.0"
-]
-
-[envs.docs.scripts]
-build = "latexmk --cd --pdf --shell-escape docs/docs" # compile LaTeX docs with latexmk
 
 [envs.test]
 path = ""

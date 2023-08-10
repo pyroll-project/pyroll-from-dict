@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import numpy
 
-from pyroll.input_text.explicit_functions import parse_function
+from pyroll.from_dict.explicit_functions import parse_function
 
 
 @dataclass

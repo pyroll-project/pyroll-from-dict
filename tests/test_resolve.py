@@ -1,4 +1,4 @@
-from pyroll.input_text.resolve import resolve
+from pyroll.from_dict.resolve import resolve
 import pyroll.core as pr
 
 
