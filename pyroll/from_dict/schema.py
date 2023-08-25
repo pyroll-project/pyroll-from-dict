@@ -8,23 +8,6 @@ from inspect import signature, Parameter
 import pyroll.core as pr
 
 
-class _PrimaryArg:
-    def __init__(self, name: str, info: Parameter):
-        annotation = info.annotation
-        self.name: str = name
-        self.annotation: Any = annotation
-
-        if str(annotation).startswith("typing.Optional"):
-            self.data_type = get_args(annotation)[0]
-            self.required = False
-        elif info.default is not Parameter.empty:
-            self.data_type = annotation
-            self.required = False
-        else:
-            self.data_type = annotation
-            self.required = True
-
-
 def create_schema(t: type, ctor: Callable = None):
     if ctor is None:
         ctor = t
@@ -32,14 +15,30 @@ def create_schema(t: type, ctor: Callable = None):
     return Schema(_create_schema_for_pyroll(t, ctor))
 
 
+def _analyse_ctor_arg(info: Parameter):
+    name = info.name
+    annotation = info.annotation
+
+    if str(annotation).startswith("typing.Optional"):
+        data_type = get_args(annotation)[0]
+        required = False
+    elif info.default is not Parameter.empty:
+        data_type = annotation
+        required = False
+    else:
+        data_type = annotation
+        required = True
+    return name, data_type, required
+
+
 def _create_schema_from_constructor(ctor):
     ctor_sig = signature(ctor)
     args = [
-        _PrimaryArg(arg, info)
+        _analyse_ctor_arg(info)
         for arg, info in ctor_sig.parameters.items() if arg not in {"kwargs", "parent"}
     ]
     args_schema = dict(
-        _create_schema_for_arg(arg.name, arg.data_type, not arg.required)
+        _create_schema_for_arg(*arg)
         for arg in args
     )
 
@@ -55,7 +54,7 @@ def _create_schema_for_pyroll(t, ctor):
     ]
 
     hook_schema = dict(
-        _create_schema_for_arg(arg[0], arg[1], True)
+        _create_schema_for_arg(arg[0], arg[1], False)
         for arg in hook_args
     )
     return ctor_schema | hook_schema
@@ -119,9 +118,9 @@ def _create_schema_for_type(type):
         return {str: str}
 
 
-def _create_schema_for_arg(name, type, optional):
+def _create_schema_for_arg(name, type, required):
     type_schema = _create_schema_for_type(type)
 
-    if optional:
+    if not required:
         return Optional(name), type_schema
     return name, type_schema
