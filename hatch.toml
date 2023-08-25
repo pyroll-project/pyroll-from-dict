@@ -11,7 +11,8 @@ path = ".venv"
 dependencies = [
     "pytest ~= 7.0",
     "tomli",
-    "tomli-w"
+    "tomli-w",
+    "rich",
 ]
 
 [envs.test]
