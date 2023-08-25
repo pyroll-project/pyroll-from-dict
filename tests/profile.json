@@ -1,0 +1,10 @@
+{
+  "__ctor__": "pr.Profile.round",
+  "radius": 1,
+  "strain": 1,
+  "temperature": 1273.15,
+  "material": [
+    "steel",
+    "C45"
+  ]
+}

@@ -1,19 +1,24 @@
-from collections.abc import Sequence, Collection, Mapping
-from dataclasses import dataclass
-from typing import Callable, Any, get_args, get_origin, Union
+from collections.abc import Collection, Mapping
+from dataclasses import is_dataclass
+from typing import Callable, Any, get_args, get_origin
 
-from schema import And, Or, Schema, Optional
+from pyroll.from_dict import Config
+from schema import And, Or, Schema, Optional, Regex
 from inspect import signature, Parameter
 import pyroll.core as pr
 
 
 class _PrimaryArg:
-    def __init__(self, name: str, annotation):
+    def __init__(self, name: str, info: Parameter):
+        annotation = info.annotation
         self.name: str = name
         self.annotation: Any = annotation
 
         if str(annotation).startswith("typing.Optional"):
             self.data_type = get_args(annotation)[0]
+            self.required = False
+        elif info.default is not Parameter.empty:
+            self.data_type = annotation
             self.required = False
         else:
             self.data_type = annotation
@@ -24,30 +29,36 @@ def create_schema(t: type, ctor: Callable = None):
     if ctor is None:
         ctor = t
 
+    return Schema(_create_schema_for_pyroll(t, ctor))
+
+
+def _create_schema_from_constructor(ctor):
     ctor_sig = signature(ctor)
-    primary_args = [
-        _PrimaryArg(arg, info.annotation)
+    args = [
+        _PrimaryArg(arg, info)
         for arg, info in ctor_sig.parameters.items() if arg not in {"kwargs", "parent"}
     ]
+    args_schema = dict(
+        _create_schema_for_arg(arg.name, arg.data_type, not arg.required)
+        for arg in args
+    )
 
-    secondary_args = [
+    return {Config.FACTORY_KEY: Regex(rf"[\w.]*{ctor.__qualname__}")} | args_schema
+
+
+def _create_schema_for_pyroll(t, ctor):
+    ctor_schema = _create_schema_from_constructor(ctor)
+
+    hook_args = [
         (name, hook.type)
         for name, hook in t.__dict__.items() if isinstance(hook, pr.Hook)
     ]
 
-    primary_schema = dict(
-        _create_schema_for_arg(arg.name, arg.data_type, not arg.required)
-        for arg in primary_args
-    )
-
-    secondary_schema = dict(
+    hook_schema = dict(
         _create_schema_for_arg(arg[0], arg[1], True)
-        for arg in secondary_args
+        for arg in hook_args
     )
-
-    return Schema(
-        primary_schema | secondary_schema
-    )
+    return ctor_schema | hook_schema
 
 
 def _create_schema_for_type(type):
@@ -58,7 +69,7 @@ def _create_schema_for_type(type):
             args = get_args(type)
 
             if str(origin).startswith("typing.Union"):
-                return And(*[_create_schema_for_type(arg) for arg in args])
+                return Or(*[_create_schema_for_type(arg) for arg in args])
 
             if issubclass(origin, Callable):
                 return str
@@ -86,6 +97,22 @@ def _create_schema_for_type(type):
 
         if issubclass(type, Collection):
             return list
+
+        if issubclass(type, pr.HookHost):
+            return _create_schema_for_pyroll(type, type)
+
+        if issubclass(type, pr.GrooveBase):
+            return Or(
+                *
+                [
+                    _create_schema_from_constructor(g)
+                    for n, g in pr.__dict__.items() if "Groove" in n and "Base" not in n
+                ]
+                + [{Config.FACTORY_KEY: str, str: str}]
+            )
+
+        if is_dataclass(type):
+            return _create_schema_from_constructor(type)
 
         raise TypeError
     except TypeError:
