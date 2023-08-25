@@ -12,4 +12,4 @@ class Config:
 
     UNIT_KEY = "unit"
 
-
+    SEQUENCE_KEY = "sequence"

@@ -8,11 +8,56 @@ from inspect import signature, Parameter
 import pyroll.core as pr
 
 
-def create_schema(t: type, ctor: Callable = None):
-    if ctor is None:
-        ctor = t
+def create_input_schema():
+    """
+    Create a validation schema for a complete PyRolL input via dict, JSON, yaml or similar.
 
-    return Schema(_create_schema_for_pyroll(t, ctor))
+    :return: a ``schema.Schema`` instance
+    """
+    profile_schema = Or(
+        create_schema(pr.Profile, pr.Profile.round),
+        create_schema(pr.Profile, pr.Profile.diamond),
+        create_schema(pr.Profile, pr.Profile.square),
+        create_schema(pr.Profile, pr.Profile.box),
+        create_schema(pr.Profile, pr.Profile.from_groove),
+        create_schema(pr.Profile, pr.Profile.from_polygon),
+        create_schema(pr.RoundProfile),
+        create_schema(pr.DiamondProfile),
+        create_schema(pr.SquareProfile),
+        create_schema(pr.BoxProfile),
+    )
+    roll_pass_schema = create_schema(pr.RollPass)
+    transport_schema = create_schema(pr.Transport)
+    rotator_schema = create_schema(pr.Rotator)
+    sequence_schema = create_schema(pr.PassSequence)
+    units_schemas = roll_pass_schema, transport_schema, rotator_schema, sequence_schema
+
+    schema = Schema(
+        {
+            Config.NAMESPACES_KEY: {str: str},
+            Config.IN_PROFILE_KEY: profile_schema,
+            Or(Config.UNIT_KEY, Config.SEQUENCE_KEY): Or(
+                [*units_schemas],
+                *units_schemas
+            )
+        }
+    )
+
+    return schema
+
+
+def create_schema(type: type, ctor: Callable = None):
+    """
+    Create a validation schema for a given type and constructor.
+
+    :param type: the type to instantiate
+    :param ctor: the constructor/factory method to use (equals ``t`` if omitted)
+    :return: a ``schema.Schema`` instance
+    """
+    if ctor is None:
+        ctor = type
+
+    return Schema(_create_schema_for_pyroll(type, ctor))
 
 
 def _analyse_ctor_arg(info: Parameter):
@@ -42,7 +87,7 @@ def _create_schema_from_constructor(ctor):
         for arg in args
     )
 
-    return {Config.FACTORY_KEY: Regex(rf"[\w.]*{ctor.__qualname__}")} | args_schema
+    return {Optional(Config.FACTORY_KEY): Regex(rf"[\w.]*{ctor.__qualname__}")} | args_schema
 
 
 def _create_schema_for_pyroll(t, ctor):
