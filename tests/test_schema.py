@@ -1,9 +1,10 @@
 import json
 from pathlib import Path
 
-from pyroll.from_dict.schema import create_schema, create_input_schema
-import pyroll.core as pr
 from rich import print_json
+
+import pyroll.core as pr
+from pyroll.from_dict.schema import create_input_schema, create_schema
 
 THIS_DIR = Path(__file__).parent
 
@@ -26,7 +27,7 @@ def test_schema_profile():
 
 
 def test_schema_roll_pass():
-    schema = create_schema(pr.RollPass, pr.RollPass)
+    schema = create_schema(pr.RollPass, pr.RollPass, qualname="pr.RollPass")
 
     json_schema = json.dumps(schema.json_schema("test/roll_pass"))
 
@@ -34,6 +35,36 @@ def test_schema_roll_pass():
     (THIS_DIR / "roll_pass.schema.json").write_text(json_schema)
 
     json_data = (THIS_DIR / "roll_pass.json").read_text()
+
+    data = json.loads(json_data)
+
+    schema.validate(data)
+
+
+def test_schema_roll_pass2():
+    schema = create_schema(pr.TwoRollPass)
+
+    json_schema = json.dumps(schema.json_schema("test/roll_pass2"))
+
+    print_json(json_schema)
+    (THIS_DIR / "roll_pass2.schema.json").write_text(json_schema)
+
+    json_data = (THIS_DIR / "roll_pass2.json").read_text()
+
+    data = json.loads(json_data)
+
+    schema.validate(data)
+
+
+def test_schema_roll_pass3():
+    schema = create_schema(pr.ThreeRollPass)
+
+    json_schema = json.dumps(schema.json_schema("test/roll_pass3"))
+
+    print_json(json_schema)
+    (THIS_DIR / "roll_pass3.schema.json").write_text(json_schema)
+
+    json_data = (THIS_DIR / "roll_pass3.json").read_text()
 
     data = json.loads(json_data)
 

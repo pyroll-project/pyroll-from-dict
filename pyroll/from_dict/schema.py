@@ -1,11 +1,12 @@
 from collections.abc import Collection, Mapping
 from dataclasses import is_dataclass
-from typing import Callable, Any, get_args, get_origin
+from inspect import Parameter, signature
+from typing import Callable, get_args, get_origin
 
-from pyroll.from_dict import Config
-from schema import And, Or, Schema, Optional, Regex
-from inspect import signature, Parameter
+from schema import Optional, Or, Regex, Schema
+
 import pyroll.core as pr
+from pyroll.from_dict import Config
 
 
 def create_input_schema():
@@ -26,27 +27,26 @@ def create_input_schema():
         create_schema(pr.SquareProfile),
         create_schema(pr.BoxProfile),
     )
-    roll_pass_schema = create_schema(pr.RollPass)
-    transport_schema = create_schema(pr.Transport)
-    rotator_schema = create_schema(pr.Rotator)
-    sequence_schema = create_schema(pr.PassSequence)
-    units_schemas = roll_pass_schema, transport_schema, rotator_schema, sequence_schema
-
+    units_schemas = [
+        create_schema(pr.RollPass, qualname="pr.RollPass"),
+        create_schema(pr.TwoRollPass),
+        create_schema(pr.ThreeRollPass),
+        create_schema(pr.Transport),
+        create_schema(pr.Rotator),
+        create_schema(pr.PassSequence),
+    ]
     schema = Schema(
         {
             Config.NAMESPACES_KEY: {str: str},
             Config.IN_PROFILE_KEY: profile_schema,
-            Or(Config.UNIT_KEY, Config.SEQUENCE_KEY): Or(
-                [*units_schemas],
-                *units_schemas
-            )
+            Or(Config.UNIT_KEY, Config.SEQUENCE_KEY): Or([*units_schemas], *units_schemas),
         }
     )
 
     return schema
 
 
-def create_schema(type: type, ctor: Callable = None):
+def create_schema(type: type, ctor: Callable = None, qualname= None):
     """
     Create a validation schema for a given type and constructor.
 
@@ -54,10 +54,10 @@ def create_schema(type: type, ctor: Callable = None):
     :param ctor: the constructor/factory method to use (equals ``t`` if omitted)
     :return: a ``schema.Schema`` instance
     """
-    if ctor is None:
-        ctor = type
+    ctor = ctor or type
+    qualname = qualname or ctor.__qualname__
 
-    return Schema(_create_schema_for_pyroll(type, ctor))
+    return Schema(_create_schema_for_pyroll(type, ctor, qualname))
 
 
 def _analyse_ctor_arg(info: Parameter):
@@ -76,32 +76,20 @@ def _analyse_ctor_arg(info: Parameter):
     return name, data_type, required
 
 
-def _create_schema_from_constructor(ctor):
+def _create_schema_from_constructor(ctor, qualname):
     ctor_sig = signature(ctor)
-    args = [
-        _analyse_ctor_arg(info)
-        for arg, info in ctor_sig.parameters.items() if arg not in {"kwargs", "parent"}
-    ]
-    args_schema = dict(
-        _create_schema_for_arg(*arg)
-        for arg in args
-    )
+    args = [_analyse_ctor_arg(info) for arg, info in ctor_sig.parameters.items() if arg not in {"kwargs", "parent"}]
+    args_schema = dict(_create_schema_for_arg(*arg) for arg in args)
 
-    return {Optional(Config.FACTORY_KEY): Regex(rf"[\w.]*{ctor.__qualname__}")} | args_schema
+    return {Optional(Config.FACTORY_KEY): Regex(rf"[\w.]*{qualname}")} | args_schema
 
 
-def _create_schema_for_pyroll(t, ctor):
-    ctor_schema = _create_schema_from_constructor(ctor)
+def _create_schema_for_pyroll(t, ctor, qualname):
+    ctor_schema = _create_schema_from_constructor(ctor, qualname)
 
-    hook_args = [
-        (name, hook.type)
-        for name, hook in t.__dict__.items() if isinstance(hook, pr.Hook)
-    ]
+    hook_args = [(name, hook.type) for name, hook in t.__dict__.items() if isinstance(hook, pr.Hook)]
 
-    hook_schema = dict(
-        _create_schema_for_arg(arg[0], arg[1], False)
-        for arg in hook_args
-    )
+    hook_schema = dict(_create_schema_for_arg(arg[0], arg[1], False) for arg in hook_args)
     return ctor_schema | hook_schema
 
 
@@ -143,14 +131,14 @@ def _create_schema_for_type(type):
             return list
 
         if issubclass(type, pr.HookHost):
-            return _create_schema_for_pyroll(type, type)
+            return _create_schema_for_pyroll(type, type, type.__qualname__)
 
         if issubclass(type, pr.GrooveBase):
             return Or(
-                *
-                [
-                    _create_schema_from_constructor(g)
-                    for n, g in pr.__dict__.items() if "Groove" in n and "Base" not in n
+                *[
+                    _create_schema_from_constructor(g, f"pr.{n}")
+                    for n, g in pr.__dict__.items()
+                    if "Groove" in n and "Base" not in n
                 ]
                 + [{Config.FACTORY_KEY: str, str: str}]
             )

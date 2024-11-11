@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-import numpy
+import numpy as np
 
 from pyroll.from_dict.explicit_functions import parse_function
 
@@ -11,6 +11,6 @@ class SelfDummy:
 
 
 def test_parse_function():
-    func = parse_function("func: np.sqrt(self.radius)", dict(np=numpy))
+    func = parse_function("func: np.sqrt(self.radius)", dict(np=np))
 
     assert func(SelfDummy(4)) == 2

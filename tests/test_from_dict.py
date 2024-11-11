@@ -2,11 +2,9 @@ from dataclasses import dataclass
 
 import pytest
 
-from pyroll.from_dict import Config
-from pyroll.from_dict.from_dict import from_dict, dict_input
-from tests.conf import D_IN_PROFILE, check_in_profile, D_UNIT, check_unit, D1, D2
-
 import pyroll.core as pr
+from pyroll.from_dict.from_dict import dict_input, from_dict
+from tests.conf import D1, D2, D_IN_PROFILE, D_UNIT, check_in_profile, check_unit
 
 
 def test_in_profile():

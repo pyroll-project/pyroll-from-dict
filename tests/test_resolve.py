@@ -1,5 +1,5 @@
-from pyroll.from_dict.resolve import resolve
 import pyroll.core as pr
+from pyroll.from_dict.resolve import resolve
 
 
 def test_alias_class():

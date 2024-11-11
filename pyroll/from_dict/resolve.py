@@ -1,5 +1,4 @@
 import pyroll.core as pr
-
 from pyroll.from_dict import Config
 
 
@@ -12,7 +11,7 @@ def resolve(name: str, namespaces: dict[str, ...] = None) -> type:
     for key in namespaces.keys():
         if name.startswith(key):
             namespace = namespaces[key]
-            object_name = name[len(key) + 1:]
+            object_name = name[len(key) + 1 :]
             break
 
     if not namespace:

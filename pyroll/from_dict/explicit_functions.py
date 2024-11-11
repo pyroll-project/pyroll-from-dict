@@ -15,12 +15,6 @@ def parse_function(s: str, namespaces: dict[str, ...]):
     expr = compile(match["expr"], "<string>", "eval")
 
     def func(self):
-        return eval(
-            expr,
-            namespaces,
-            dict(
-                self=self
-            )
-        )
+        return eval(expr, namespaces, dict(self=self))
 
     return func
